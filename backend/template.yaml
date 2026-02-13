@@ -1,0 +1,202 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Cloud-based inventory management backend (API Gateway + Lambda + DynamoDB + SNS + Cognito).
+
+Parameters:
+  CognitoCallbackUrl:
+    Type: String
+    Default: http://localhost:3000
+    Description: Callback URL for Cognito Hosted UI (e.g., http://localhost:3000 for local, or your Amplify URL for production)
+  
+  CognitoLogoutUrl:
+    Type: String
+    Default: http://localhost:3000
+    Description: Logout URL for Cognito Hosted UI (e.g., http://localhost:3000 for local, or your Amplify URL for production)
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 10
+    MemorySize: 256
+    Tracing: Active
+    Environment:
+      Variables:
+        SHOPS_TABLE: !Ref ShopsTable
+        PRODUCTS_TABLE: !Ref ProductsTable
+        TRANSACTIONS_TABLE: !Ref TransactionsTable
+        LOW_STOCK_TOPIC_ARN: !Ref LowStockTopic
+
+Resources:
+  InventoryApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: InventoryApi
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+
+  InventoryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: InventoryHandler
+      CodeUri: .
+      Handler: src/inventoryHandler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ShopsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ProductsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TransactionsTable
+        - SNSPublishMessagePolicy:
+            TopicName: !GetAtt LowStockTopic.TopicName
+      Events:
+        GetProducts:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /shops/{shopId}/products
+            Method: GET
+        CreateProduct:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /shops/{shopId}/products
+            Method: POST
+        UpdateProduct:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /shops/{shopId}/products/{productId}
+            Method: PUT
+        DeleteProduct:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /shops/{shopId}/products/{productId}
+            Method: DELETE
+        AdjustStock:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /shops/{shopId}/products/{productId}/adjust-stock
+            Method: POST
+        ListTransactions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /shops/{shopId}/products/{productId}/transactions
+            Method: GET
+
+  ShopsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-Shops'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: shopId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: shopId
+          KeyType: HASH
+
+  ProductsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-Products'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: shopId
+          AttributeType: S
+        - AttributeName: productId
+          AttributeType: S
+        - AttributeName: name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: shopId
+          KeyType: HASH
+        - AttributeName: productId
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: shopId
+              KeyType: HASH
+            - AttributeName: name
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  TransactionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-Transactions'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: shopId
+          AttributeType: S
+        - AttributeName: transactionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: shopId
+          KeyType: HASH
+        - AttributeName: transactionId
+          KeyType: RANGE
+
+  LowStockTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-LowStockTopic'
+
+  # Optional: Cognito user pool and app client for shop-owner auth.
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${AWS::StackName}-ShopOwners'
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: inventory-frontend-client
+      UserPoolId: !Ref CognitoUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - !Ref CognitoCallbackUrl
+      LogoutURLs:
+        - !Ref CognitoLogoutUrl
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+      AllowedOAuthScopes:
+        - email
+        - openid
+
+Outputs:
+  ApiUrl:
+    Description: Base URL for the Inventory API
+    Value: !Sub 'https://${InventoryApi}.execute-api.${AWS::Region}.amazonaws.com/prod'
+
+  LowStockTopicArn:
+    Description: SNS topic ARN for low-stock alerts
+    Value: !Ref LowStockTopic
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref CognitoUserPool
+
+  UserPoolClientId:
+    Description: Cognito User Pool App Client ID
+    Value: !Ref CognitoUserPoolClient
+

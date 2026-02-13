@@ -1,0 +1,24 @@
+# Example SAM configuration file
+# Copy this to samconfig.toml after running 'sam deploy --guided'
+# Or create samconfig.toml manually with your values
+
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "cloud-inventory-backend"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+region = "us-east-1"
+parameter_overrides = [
+    "CognitoCallbackUrl=http://localhost:3000",
+    "CognitoLogoutUrl=http://localhost:3000"
+]
+image_repositories = []
