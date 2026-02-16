@@ -16,11 +16,16 @@ window.Auth = (function () {
     return { poolId: poolId, clientId: clientId, region: region };
   }
 
+  // function getDomain() {
+  //   var cfg = getConfig();
+  //   if (!cfg) return null;
+  //   return cfg.poolId + '.auth.' + cfg.region + '.amazoncognito.com';
+  // }
   function getDomain() {
-    var cfg = getConfig();
-    if (!cfg) return null;
-    return cfg.poolId + '.auth.' + cfg.region + '.amazoncognito.com';
+    var c = window.APP_CONFIG || {};
+    return c.COGNITO_DOMAIN || null;
   }
+  
 
   /** Build Cognito Hosted UI login URL (implicit flow). */
   function getLoginUrl() {

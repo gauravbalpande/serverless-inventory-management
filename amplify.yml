@@ -9,6 +9,10 @@ frontend:
         - sed -i "s|__COGNITO_USER_POOL_ID__|$COGNITO_USER_POOL_ID|g" frontend/config.js
         - sed -i "s|__COGNITO_CLIENT_ID__|$COGNITO_CLIENT_ID|g" frontend/config.js
         - sed -i "s|__COGNITO_REGION__|$COGNITO_REGION|g" frontend/config.js
+<<<<<<< HEAD
+=======
+        - sed -i "s|__COGNITO_DOMAIN__|$COGNITO_DOMAIN|g" frontend/config.js
+>>>>>>> e2c03b6 (last-01)
         - echo "Generated config.js:"
         - cat frontend/config.js
   artifacts:
