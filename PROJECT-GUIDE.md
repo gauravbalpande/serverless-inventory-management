@@ -77,6 +77,8 @@ Use this **single file** to run and finish the project from start to finish. Fol
    - `COGNITO_USER_POOL_ID` = **UserPoolId** from Step 2
    - `COGNITO_CLIENT_ID` = **UserPoolClientId** from Step 2
    - `COGNITO_REGION` = your AWS region (e.g. `us-east-1`)
+   - **`COGNITO_DOMAIN`** = the **CognitoDomain** output from Step 2 (e.g. `cloud-inventory-app.auth.us-east-1.amazoncognito.com`).  
+     Without this, the Login button shows “Login pages unavailable”. You can use **CognitoDomain** from the stack outputs, or set `COGNITO_DOMAIN_PREFIX` (e.g. `cloud-inventory-app`) and we build the domain from the region.
 
 3. Save the file.
 
@@ -237,6 +239,7 @@ Once the repo is connected (Step 9), each push to the connected branch triggers 
 - **“Missing Authentication Token”** from API → You’re calling the wrong path. Use `/shops/{shopId}/products` (e.g. `/shops/demo-shop-001/products`), not just `/prod`.
 - **“Internal server error”** / **“Cannot find module 'aws-sdk'”** → Backend needs `aws-sdk` in `backend/package.json` and a redeploy: `cd backend && npm install && sam build && sam deploy`.
 - **“Failed to fetch”** in browser → Serve the app from a server (e.g. `npx serve -p 3000 .`), not by opening the HTML file directly; and ensure `config.js` has the correct `API_BASE_URL`.
+- **“Login pages unavailable. Please contact an administrator.”** → The Cognito User Pool has no Hosted UI domain. (1) Redeploy the backend so the template creates the domain (it now includes `CognitoUserPoolDomain`). (2) In `config.js` set **COGNITO_DOMAIN** to the stack output **CognitoDomain** (e.g. `cloud-inventory-app.auth.us-east-1.amazoncognito.com`). If the default prefix is taken, deploy with `CognitoDomainPrefix=your-unique-prefix`.
 - **Login redirect fails** → Check Cognito callback and sign-out URLs (Step 4) and that they match the URL in the browser (e.g. `http://localhost:3000` or your Amplify URL).
 - **Shop dropdown empty** → Run the add-shops script (Step 5) and ensure the backend has the **GET /shops** route deployed.
 

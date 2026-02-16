@@ -13,6 +13,11 @@ Parameters:
     Default: http://localhost:3000
     Description: Logout URL for Cognito Hosted UI (e.g., http://localhost:3000 for local, or your Amplify URL for production)
 
+  CognitoDomainPrefix:
+    Type: String
+    Default: cloud-inventory-app
+    Description: Prefix for Cognito Hosted UI domain (must be unique in region). Full domain will be {prefix}.auth.{region}.amazoncognito.com
+
 Globals:
   Function:
     Runtime: nodejs18.x
@@ -190,6 +195,13 @@ Resources:
         - email
         - openid
 
+  # Required for Hosted UI: "Login pages unavailable" appears without this
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Ref CognitoDomainPrefix
+      UserPoolId: !Ref CognitoUserPool
+
 Outputs:
   ApiUrl:
     Description: Base URL for the Inventory API
@@ -206,4 +218,8 @@ Outputs:
   UserPoolClientId:
     Description: Cognito User Pool App Client ID
     Value: !Ref CognitoUserPoolClient
+
+  CognitoDomain:
+    Description: Cognito Hosted UI domain - set COGNITO_DOMAIN in frontend config.js to this value
+    Value: !Sub '${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com'
 

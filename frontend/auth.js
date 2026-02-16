@@ -16,14 +16,14 @@ window.Auth = (function () {
     return { poolId: poolId, clientId: clientId, region: region };
   }
 
-  // function getDomain() {
-  //   var cfg = getConfig();
-  //   if (!cfg) return null;
-  //   return cfg.poolId + '.auth.' + cfg.region + '.amazoncognito.com';
-  // }
+  /** Hosted UI domain: use COGNITO_DOMAIN (full hostname) or build from COGNITO_DOMAIN_PREFIX + region. */
   function getDomain() {
     var c = window.APP_CONFIG || {};
-    return c.COGNITO_DOMAIN || null;
+    if (c.COGNITO_DOMAIN) return c.COGNITO_DOMAIN;
+    var prefix = c.COGNITO_DOMAIN_PREFIX;
+    var region = c.COGNITO_REGION || 'us-east-1';
+    if (prefix) return prefix + '.auth.' + region + '.amazoncognito.com';
+    return null;
   }
   
 
@@ -110,6 +110,11 @@ window.Auth = (function () {
   }
 
   function login() {
+    var domain = getDomain();
+    if (!domain) {
+      alert('Cognito Hosted UI domain missing. Set COGNITO_DOMAIN (or COGNITO_DOMAIN_PREFIX) in config.js. See stack output CognitoDomain.');
+      return;
+    }
     var url = getLoginUrl();
     if (url) window.location.href = url;
     else alert('Cognito not configured. Set COGNITO_USER_POOL_ID and COGNITO_CLIENT_ID in config.js');
