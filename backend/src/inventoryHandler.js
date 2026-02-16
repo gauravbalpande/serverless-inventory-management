@@ -34,6 +34,11 @@ exports.handler = async (event) => {
     const shopId = event.pathParameters ? event.pathParameters.shopId : null;
     const productId = event.pathParameters ? event.pathParameters.productId : null;
 
+    // List all shops (no shopId in path)
+    if (path === '/shops' && method === 'GET') {
+      return await listShops(event);
+    }
+
     if (!shopId) {
       return response(400, { message: 'shopId is required in path' });
     }
@@ -64,6 +69,11 @@ exports.handler = async (event) => {
     return response(500, { message: 'Internal server error', error: err.message });
   }
 };
+
+async function listShops() {
+  const data = await dynamo.scan({ TableName: SHOPS_TABLE }).promise();
+  return response(200, { items: data.Items || [] });
+}
 
 async function listProducts(shopId, event) {
   const params = {

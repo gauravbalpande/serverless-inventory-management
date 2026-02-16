@@ -53,6 +53,12 @@ Resources:
         - SNSPublishMessagePolicy:
             TopicName: !GetAtt LowStockTopic.TopicName
       Events:
+        ListShops:
+          Type: Api
+          Properties:
+            RestApiId: !Ref InventoryApi
+            Path: /shops
+            Method: GET
         GetProducts:
           Type: Api
           Properties:
@@ -179,6 +185,7 @@ Resources:
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthFlows:
         - code
+        - implicit
       AllowedOAuthScopes:
         - email
         - openid

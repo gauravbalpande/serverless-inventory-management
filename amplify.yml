@@ -1,0 +1,12 @@
+# AWS Amplify build spec (optional). Set app root to repo root so this file is used.
+version: 1
+frontend:
+  phases:
+    build:
+      commands: []
+  artifacts:
+    baseDirectory: frontend
+    files:
+      - '**/*'
+  cache:
+    paths: []

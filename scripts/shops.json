@@ -1,0 +1,5 @@
+[
+  { "shopId": "demo-shop-001", "name": "Demo Shop · Small", "ownerEmail": "owner@example.com", "size": "small" },
+  { "shopId": "demo-shop-002", "name": "Demo Shop · Medium", "ownerEmail": "owner@example.com", "size": "medium" },
+  { "shopId": "demo-shop-003", "name": "Demo Shop · Multi-branch", "ownerEmail": "owner@example.com", "size": "large" }
+]

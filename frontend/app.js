@@ -1,6 +1,10 @@
 (() => {
   const { useState, useEffect, useMemo } = React;
 
+  if (window.Auth && typeof window.Auth.init === 'function') {
+    window.Auth.init();
+  }
+
   const cfg = window.APP_CONFIG || {};
   const API_BASE_URL = cfg.API_BASE_URL || '';
 
@@ -21,10 +25,8 @@
       },
       options.headers || {}
     );
-
-    // Attach Cognito token here if you wire it up:
-    // const token = getIdTokenSomehow();
-    // if (token) headers['Authorization'] = `Bearer ${token}`;
+    var token = window.Auth && typeof window.Auth.getToken === 'function' ? window.Auth.getToken() : null;
+    if (token) headers['Authorization'] = 'Bearer ' + token;
 
     const res = await fetch(url, { ...options, headers });
     const text = await res.text();
@@ -46,6 +48,7 @@
 
   function App() {
     const [shopId, setShopId] = useState(initialShopId);
+    const [shops, setShops] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -109,10 +112,25 @@
 
     useEffect(() => {
       if (apiConfigured) {
+        loadShops();
+      }
+    }, [apiConfigured]);
+
+    useEffect(() => {
+      if (apiConfigured) {
         loadProducts();
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [shopId, apiConfigured]);
+
+    async function loadShops() {
+      try {
+        var data = await apiFetch('/shops');
+        setShops(data.items || []);
+      } catch (e) {
+        setShops([]);
+      }
+    }
 
     async function loadProducts() {
       setLoading(true);
@@ -303,26 +321,36 @@
               React.createElement(
                 'div',
                 null,
-                React.createElement('div', { className: 'user-name' }, 'Shop Owner'),
+                React.createElement(
+                  'div',
+                  { className: 'user-name' },
+                  window.Auth && window.Auth.isLoggedIn() ? (window.Auth.getEmail() || 'Shop Owner') : 'Guest'
+                ),
                 React.createElement(
                   'div',
                   { className: 'user-meta' },
-                  cfg.COGNITO_USER_POOL_ID ? 'Cognito connected' : 'Cognito not configured'
+                  window.Auth && window.Auth.isLoggedIn() ? 'Signed in' : (cfg.COGNITO_USER_POOL_ID ? 'Sign in with Cognito' : 'Cognito not configured')
                 )
               )
             ),
-            React.createElement(
-              'button',
-              {
-                className: 'btn-ghost',
-                onClick: () => {
-                  // Placeholder: wire to Cognito Hosted UI
-                  alert('Hook this button to your Cognito Hosted UI login/logout.');
-                }
-              },
-              React.createElement('span', null, 'Auth'),
-              React.createElement('span', { style: { fontSize: 10, opacity: 0.8 } }, '↗')
-            )
+            window.Auth && window.Auth.isLoggedIn()
+              ? React.createElement(
+                  'button',
+                  { className: 'btn-ghost', onClick: function () { window.Auth.logout(); } },
+                  'Logout'
+                )
+              : React.createElement(
+                  'button',
+                  {
+                    className: 'btn-ghost',
+                    onClick: function () {
+                      if (window.Auth && window.Auth.login) window.Auth.login();
+                      else alert('Cognito not configured.');
+                    }
+                  },
+                  React.createElement('span', null, 'Login'),
+                  React.createElement('span', { style: { fontSize: 10, opacity: 0.8 } }, '↗')
+                )
           )
         ),
         React.createElement(
@@ -360,21 +388,19 @@
                   value: shopId,
                   onChange: (e) => setShopId(e.target.value)
                 },
-                React.createElement(
-                  'option',
-                  { value: 'demo-shop-001' },
-                  'Demo Shop · Small'
-                ),
-                React.createElement(
-                  'option',
-                  { value: 'demo-shop-002' },
-                  'Demo Shop · Medium'
-                ),
-                React.createElement(
-                  'option',
-                  { value: 'demo-shop-003' },
-                  'Demo Shop · Multi-branch'
-                )
+                shops.length > 0
+                  ? shops.map(function (s) {
+                      return React.createElement(
+                        'option',
+                        { key: s.shopId, value: s.shopId },
+                        s.name || s.shopId
+                      );
+                    })
+                  : [
+                      React.createElement('option', { key: 'd1', value: 'demo-shop-001' }, 'Demo Shop · Small'),
+                      React.createElement('option', { key: 'd2', value: 'demo-shop-002' }, 'Demo Shop · Medium'),
+                      React.createElement('option', { key: 'd3', value: 'demo-shop-003' }, 'Demo Shop · Multi-branch')
+                    ]
               ),
               React.createElement('input', {
                 className: 'input',
